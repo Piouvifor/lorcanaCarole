@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Integration</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+        }
+        #mainContainer {
+            display: flex;
+            flex: 1;
+        }
+        #searchResults {
+            flex: 1;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+            max-height: calc(100vh - 100px); /* Adjust height to fit within the viewport */
+            position: relative;
+        }
+        #contentContainer {
+            display: flex;
+            flex-direction: column;
+            flex: 3;
+            padding: 10px;
+            max-height: calc(100vh - 100px); /* Adjust height to fit within the viewport */
+        }
+        #gridContainer {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 10px;
+            flex: 1;
+            padding: 10px;
+        }
+        .grid-item {
+            border: 1px solid #ccc;
+            padding: 10px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            cursor: pointer;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+        }
+        #searchContainer {
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+        .result-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .result-item img {
+            margin-right: 10px;
+        }
+        .popup {
+            display: none;
+            position: fixed;
+            z-index: 10;
+            width: 430px;
+            height: 600px;
+            border: 1px solid #ccc;
+            background-color: white;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .popup img {
+            width: 100%;
+            height: 100%;
+        }
+        .rotate-buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .rotate-buttons button {
+            margin: 0 5px;
+        }
+        #removedCardsContainer {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .removed-card {
+            border: 1px solid #ccc;
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="mainContainer">
+        <div id="searchResults">
+            <button class="close-btn" onclick="clearSearchResults()">x</button>
+        </div>
+        <div id="contentContainer">
+            <div id="gridContainer">
+                <div class="grid-item" id="grid-item-1"></div>
+                <div class="grid-item" id="grid-item-2"></div>
+                <div class="grid-item" id="grid-item-3"></div>
+                <div class="grid-item" id="grid-item-4"></div>
+                <div class="grid-item" id="grid-item-5"></div>
+                <div class="grid-item" id="grid-item-6"></div>
+                <div class="grid-item" id="grid-item-7"></div>
+                <div class="grid-item" id="grid-item-8"></div>
+                <div class="grid-item" id="grid-item-9"></div>
+                <div class="grid-item" id="grid-item-10"></div>
+                <div class="grid-item" id="grid-item-11"></div>
+                <div class="grid-item" id="grid-item-12"></div>
+            </div>
+            <div id="removedCardsContainer">
+                <!-- Removed cards will be displayed here -->
+            </div>
+        </div>
+    </div>
+    <div id="searchContainer">
+        <input type="text" id="searchInput" placeholder="Chercher...">
+        <button onclick="search()">Chercher</button>
+    </div>
+    <div class="popup" id="popup">
+        <img src="" alt="Popup Image">
+    </div>
+
+    <script>
+        let allData = [];
+        let selectedItems = [];
+        let removedItems = [];
+
+        // Function to fetch and display JSON data
+        async function fetchJSON() {
+            try {
+                const response = await fetch('allCards.json');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                allData = data; // Store the data for searching
+            } catch (error) {
+                console.error('Error fetching JSON data:', error);
+            }
+        }
+
+        // Function to search and display results
+        function search() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filteredData = allData.filter(item => item.fullName.toLowerCase().includes(query));
+            let searchResults = '<button class="close-btn" onclick="clearSearchResults()">x</button>';
+            filteredData.forEach(item => {
+                searchResults += `
+                    <div class="result-item" onclick="displayResult(${item.id})" style="cursor: pointer;">
+                        <img src="${item.images.full}" alt="${item.fullName}" width="145" height="200">
+                        <div>
+                            <p>Nom: ${item.fullName}</p>
+                        </div>
+                    </div>
+                    <hr>
+                `;
+            });
+            document.getElementById('searchResults').innerHTML = searchResults;
+        }
+
+        // Function to display selected result
+        function displayResult(id) {
+            const selectedItem = allData.find(item => item.id === id);
+            if (selectedItem && selectedItems.length < 12) {
+                selectedItems.push(selectedItem);
+                updateGrid();
+            }
+        }
+
+        // Function to update the grid with selected items
+        function updateGrid() {
+            clearGrid();
+            selectedItems.forEach((item, index) => {
+                const gridItem = document.getElementById(`grid-item-${index + 1}`);
+                gridItem.innerHTML = `
+                    <button class="close-btn" onclick="removeItem(${index})">x</button>
+                    <img id="grid-img-${index}" src="${item.images.full}" alt="${item.fullName}" width="145" height="200" onmouseover="showPopup(event, '${item.images.full}')" onmouseout="hidePopup()">
+                    <div>
+                        <p>Nom: ${item.fullName}</p>
+                        <p>${item.fullText}</p>
+                    </div>
+                    <div class="rotate-buttons">
+                        <button onclick="rotateImage(${index}, 0)">Redressé</button>
+                        <button onclick="rotateImage(${index}, 90)">Epuisé</button>
+                    </div>
+                `;
+            });
+        }
+
+        // Function to rotate the image
+        function rotateImage(index, angle) {
+            const img = document.getElementById(`grid-img-${index}`);
+            img.style.transform = `rotate(${angle}deg)`;
+        }
+
+        // Function to remove an item from the grid
+        function removeItem(index) {
+            const removedItem = selectedItems.splice(index, 1)[0];
+            removedItems.push(removedItem);
+            updateGrid();
+            updateRemovedCards();
+        }
+
+        // Function to update the removed cards section
+        function updateRemovedCards() {
+            const removedCardsContainer = document.getElementById('removedCardsContainer');
+            removedCardsContainer.innerHTML = '';
+            removedItems.forEach((item, index) => {
+                removedCardsContainer.innerHTML += `
+                    <div class="removed-card" onclick="reselectItem(${index})">
+                        <img src="${item.images.full}" alt="${item.fullName}" width="145" height="200">
+                        <p>Nom: ${item.fullName}</p>
+                    </div>
+                `;
+            });
+        }
+
+        // Function to reselect an item from the removed cards section
+        function reselectItem(index) {
+            if (selectedItems.length < 12) {
+                const reselectedItem = removedItems.splice(index, 1)[0];
+                selectedItems.push(reselectedItem);
+                updateGrid();
+                updateRemovedCards();
+            }
+        }
+
+        // Function to clear the grid
+        function clearGrid() {
+            for (let i = 1; i <= 12; i++) {
+                document.getElementById(`grid-item-${i}`).innerHTML = '';
+            }
+        }
+
+        // Function to clear search results
+        function clearSearchResults() {
+            document.getElementById('searchResults').innerHTML = '<button class="close-btn" onclick="clearSearchResults()">x</button>';
+        }
+
+        // Function to show popup
+        function showPopup(event, src) {
+            const popup = document.getElementById('popup');
+            const img = popup.querySelector('img');
+            img.src = src;
+            popup.style.display = 'block';
+        }
+
+        // Function to hide popup
+        function hidePopup() {
+            const popup = document.getElementById('popup');
+            popup.style.display = 'none';
+        }
+
+        // Call the function to fetch and display JSON data
+        fetchJSON();
+    </script>
+</body>
+</html>
